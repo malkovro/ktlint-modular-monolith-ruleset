@@ -1,0 +1,73 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.barkibu'
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    ktlint
+}
+
+dependencies {
+    def ktlint_version = '0.44.0'
+    ktlint "com.pinterest:ktlint:$ktlint_version"
+    compileOnly "com.pinterest.ktlint:ktlint-core:$ktlint_version"
+    testImplementation "com.pinterest.ktlint:ktlint-core:$ktlint_version"
+    testImplementation "com.pinterest.ktlint:ktlint-test:$ktlint_version"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.1"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.1"
+    testImplementation "org.assertj:assertj-core:3.10.0"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+task ktlint(type: JavaExec, dependsOn: classes) {
+    main = 'com.pinterest.ktlint.Main'
+    // adding compiled classes to the classpath so that ktlint would validate project's sources
+    // using its own ruleset (in other words to dogfood)
+    classpath = configurations.ktlint + sourceSets.main.output
+    args '--debug', 'src/**/*.kt'
+}
+
+check.dependsOn ktlint
+
+afterEvaluate {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                pom {
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution = 'repo'
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
